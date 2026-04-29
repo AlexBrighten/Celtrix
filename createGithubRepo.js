@@ -1,3 +1,5 @@
+import { execSync } from "child_process";
+
 import inquirer from "inquirer";
 import chalk from "chalk";
 import ora from "ora";
@@ -470,38 +472,63 @@ async function setupLocalGitTracking(projectName, cloneUrl) {
  * @param {string} projectName - Project name used as the default repository name.
  * @returns {Promise<{html_url: string, clone_url: string} | null>}
  */
+
 export async function createGithubRepo(projectName) {
   try {
-    const accessToken = await authenticateWithGitHub();
-    const repository = await promptForRepositoryDetails(projectName);
+    console.log("\n🔍 Checking GitHub CLI...\n");
 
-    if (!repository) {
-      console.log(chalk.yellow("\nGitHub repository creation cancelled.\n"));
-      return null;
+    // 1. Check if gh is installed
+    try {
+      execSync("gh --version", { stdio: "ignore" });
+    } catch {
+      console.log("❌ GitHub CLI is not installed.");
+      console.log("👉 Install it from: https://cli.github.com");
+      process.exit(1);
     }
 
-    const spinner = ora("Creating GitHub repository...").start();
+    // 2. Check if user is logged in
+    console.log("🔐 Checking GitHub authentication...\n");
+    try {
+      execSync("gh auth status", { stdio: "inherit" });
+    } catch {
+      console.log("\n❌ You are not logged into GitHub.");
+      console.log("👉 Run: gh auth login");
+      process.exit(1);
+    }
+
+    // 3. Initialize git (only if not already initialized)
+    console.log("\n⚙ Setting up Git...\n");
+    try {
+      execSync("git rev-parse --is-inside-work-tree", { stdio: "ignore" });
+      console.log("✔ Git already initialized");
+    } catch {
+      execSync("git init", { stdio: "inherit" });
+      console.log("✔ Git initialized");
+    }
+
+    // 4. Add and commit
+    execSync("git add .", { stdio: "inherit" });
 
     try {
-      const createdRepository = await createRepository(accessToken, repository);
-      spinner.succeed("GitHub repository created successfully.");
-
-      console.log(chalk.green(`\nRepository URL: ${createdRepository.html_url}`));
-      await setupLocalGitTracking(projectName, createdRepository.clone_url);
-
-      return createdRepository;
-    } catch (error) {
-      spinner.fail("GitHub repository creation failed.");
-      throw error;
-    }
-  } catch (error) {
-    if (isPromptCancellation(error)) {
-      console.log(chalk.yellow("\nGitHub repository creation cancelled.\n"));
-      return null;
+      execSync('git commit -m "Initial commit"', { stdio: "inherit" });
+    } catch {
+      console.log("⚠ Nothing to commit (might already be committed)");
     }
 
-    const message = normalizeNetworkError(error).message;
-    console.log(chalk.red(`\n❌ ${message}\n`));
-    return null;
+    // 5. Create GitHub repo and push
+    console.log("\n🚀 Creating GitHub repository...\n");
+
+    execSync(
+      `gh repo create ${projectName} --public --source=. --remote=origin --push`,
+      { stdio: "inherit" }
+    );
+
+    console.log(`\n🌍 Repository created successfully!`);
+    console.log(`👉 https://github.com/<your-username>/${projectName}\n`);
+
+  } catch (err) {
+    console.error("\n❌ Failed to create GitHub repository");
+    console.error(err.message);
+    process.exit(1);
   }
 }
