@@ -1,15 +1,15 @@
 import inquirer from "inquirer";
 import chalk from "chalk";
 import boxen from "boxen";
-import { askLanguage } from "./language.js";
-import { askFrontend } from "./frontend.js";
-import { askBackend } from "./backend.js";
-import { askRuntime } from "./runtime.js";
-import { askDatabase } from "./database.js";
-import { askORM } from "./orm.js";
-import { askAPI } from "./api.js";
-import { askAuth } from "./auth.js";
-import { askAddons } from "./addons.js";
+import { askLanguage } from "./web-parts/language.js";
+import { askFrontend } from "./web-parts/frontend.js";
+import { askBackend } from "./web-parts/backend.js";
+import { askRuntime } from "./web-parts/runtime.js";
+import { askDatabase } from "./web-parts/database.js";
+import { askORM } from "./web-parts/orm.js";
+import { askAPI } from "./web-parts/api.js";
+import { askAuth } from "./web-parts/auth.js";
+import { askAddons } from "./web-parts/addons.js";
 
 const TOTAL_STEPS = 10;
 
