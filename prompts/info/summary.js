@@ -9,7 +9,7 @@ import path from "path";
 import { formatElapsed } from "./formatElapsed.js";
 import { getStackMeta } from "../stable/getStackMeta.js";
 
-export function showSummaryBox({ projectName, config, installedDeps, createdRepo, elapsed }) {
+export function showSummaryBox({ projectName, config, installedDeps, elapsed }) {
   const isCustom = config.stack === "custom";
   const { frontend, backend } = isCustom
     ? { frontend: config.frontend, backend: config.backend }
@@ -46,7 +46,6 @@ export function showSummaryBox({ projectName, config, installedDeps, createdRepo
 
   lines.push(
     `${chalk.bold("📥 Deps:")}         ${installedDeps ? chalk.green("installed") : chalk.gray("skipped")}`,
-    `${chalk.bold("🐙 GitHub Repo:")}  ${createdRepo ? chalk.green("created") : chalk.gray("skipped")}`,
     `${chalk.bold("⏱  Time:")}         ${chalk.white(formatElapsed(elapsed))}`,
   );
 
