@@ -9,7 +9,6 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createProject } from "./commands/scaffold.js";
-import { createGithubRepo } from "./createGithubRepo.js";
 import { loginCommand } from "./commands/login.js";
 import { gatherCustomConfig } from "./prompts/index.js";
 import { isPromptCancellation } from "./utils/shared.js";
@@ -138,16 +137,6 @@ async function main() {
       },
     ]);
 
-    // Ask whether to create a github repo
-    const { createGitHubRepo } = await inquirer.prompt([
-      {
-        type: "confirm",
-        name: "createGitHubRepo",
-        message: "Do you want to create a GitHub Repository?",
-        default: true,
-      },
-    ]);
-
     // --- Scaffold with spinner + timing ---
     const startTime = Date.now();
     const scaffoldSpinner = ora({
@@ -167,9 +156,7 @@ async function main() {
     }
 
     // --- Git init ---
-    if (initGit && !createGitHubRepo) {
-      // Only run standalone git init when NOT creating a GitHub repo
-      // (createGithubRepo handles git init + remote + push itself)
+    if (initGit) {
       const projectPath = path.join(process.cwd(), projectName);
       try {
         const { execSync } = await import("child_process");
@@ -182,20 +169,12 @@ async function main() {
       }
     }
 
-    // --- GitHub repo ---
-    let repoCreated = false;
-    if (createGitHubRepo) {
-      await createGithubRepo(projectName);
-      repoCreated = true;
-    }
-
     // --- Summary box ---
     const totalElapsed = Date.now() - startTime;
     showSummaryBox({
       projectName,
       config,
       installedDeps: installDeps,
-      createdRepo: repoCreated,
       elapsed: totalElapsed,
     });
 
