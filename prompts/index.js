@@ -108,11 +108,19 @@ export async function gatherCustomConfig() {
     const { runtime } = await askRuntime(step(4));
 
     // 5. Database (includes conditional provider/setup prompt)
-    const { database } = await askDatabase(step(5));
+    let database = { type: "none" };
+    if (backend === "convex") {
+      console.log(chalk.gray(`   ${step(5)} Database selection skipped ${chalk.dim("(managed by Convex)")}`));
+    } else {
+      const dbResult = await askDatabase(step(5));
+      database = dbResult.database;
+    }
 
-    // 6. ORM — skip when no database is selected
+    // 6. ORM — skip when no database is selected or Convex is used
     let orm = "none";
-    if (database.type !== "none") {
+    if (backend === "convex") {
+      console.log(chalk.gray(`   ${step(6)} ORM selection skipped ${chalk.dim("(managed by Convex)")}`));
+    } else if (database.type !== "none") {
       const ormResult = await askORM(step(6));
       orm = ormResult.orm;
     } else {
@@ -129,7 +137,13 @@ export async function gatherCustomConfig() {
     }
 
     // 8. Auth provider
-    const { auth } = await askAuth(step(8));
+    let auth = "none";
+    if (backend === "none" || backend === "convex") {
+      console.log(chalk.gray(`   ${step(8)} Auth selection skipped ${chalk.dim(`(${backend === "none" ? "no backend" : "managed by Convex"})`)}`));
+    } else {
+      const authResult = await askAuth(step(8));
+      auth = authResult.auth;
+    }
 
     // 9. Add-ons (multi-select)
     const { addons } = await askAddons(step(9));

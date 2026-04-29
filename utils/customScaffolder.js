@@ -95,18 +95,27 @@ function scaffoldRoot(projectPath, projectName, config) {
   const workspaces = ["client"];
   if (hasServer && backend !== "convex") workspaces.push("server");
 
+  const devClientCmd = packageManager === "npm" ? "npm run dev --prefix client" :
+                       packageManager === "yarn" ? "yarn workspace client dev" :
+                       packageManager === "pnpm" ? "pnpm --filter client run dev" :
+                       "bun --cwd client run dev";
+
   const rootPkg = {
     name: projectName,
     version: "0.1.0",
     private: true,
     workspaces,
     scripts: {
-      "dev:client": `${packageManager} --prefix client run dev`,
+      "dev:client": devClientCmd,
     },
   };
 
   if (hasServer && backend !== "convex") {
-    rootPkg.scripts["dev:server"] = `${packageManager} --prefix server run dev`;
+    const devServerCmd = packageManager === "npm" ? "npm run dev --prefix server" :
+                         packageManager === "yarn" ? "yarn workspace server dev" :
+                         packageManager === "pnpm" ? "pnpm --filter server run dev" :
+                         "bun --cwd server run dev";
+    rootPkg.scripts["dev:server"] = devServerCmd;
   }
 
   fs.writeJsonSync(path.join(projectPath, "package.json"), rootPkg, { spaces: 2 });
@@ -257,12 +266,12 @@ function scaffoldDatabase(projectPath, config) {
     return;
   }
 
-  // Use provider-specific template: database/{type}/{provider}/
+  // Use provider-specific template: database/{type}/{provider}/{language}
   const provider = database.provider || "local";
-  const dbTemplate = path.join(CUSTOM_TEMPLATES, "database", database.type, provider);
+  const dbTemplate = path.join(CUSTOM_TEMPLATES, "database", database.type, provider, config.language);
 
-  // Fallback to database/{type}/ if provider dir doesn't exist
-  const fallbackTemplate = path.join(CUSTOM_TEMPLATES, "database", database.type);
+  // Fallback to database/{type}/{language} if provider dir doesn't exist
+  const fallbackTemplate = path.join(CUSTOM_TEMPLATES, "database", database.type, config.language);
   const templateDir = fs.existsSync(dbTemplate) ? dbTemplate : (fs.existsSync(fallbackTemplate) ? fallbackTemplate : null);
 
   if (!templateDir) {
@@ -306,7 +315,7 @@ function scaffoldORM(projectPath, config) {
     return;
   }
 
-  const ormTemplate = path.join(CUSTOM_TEMPLATES, "orm", orm, database.type);
+  const ormTemplate = path.join(CUSTOM_TEMPLATES, "orm", orm, database.type, config.language);
   const serverDir = path.join(projectPath, "server");
   const serverPkg = path.join(serverDir, "package.json");
 
@@ -327,6 +336,75 @@ function scaffoldORM(projectPath, config) {
   }
 
   mergeDeps(ormTemplate, serverPkg);
+
+  // Dynamic Wiring for Prisma
+  if (orm === "prisma") {
+    const indexFile = config.language === "typescript" ? "index.ts" : "index.js";
+    const content = config.language === "typescript"
+      ? `import { PrismaClient } from "@prisma/client";\n\nexport const prisma = new PrismaClient();\n`
+      : `const { PrismaClient } = require("@prisma/client");\n\nconst prisma = new PrismaClient();\n\nmodule.exports = { prisma };\n`;
+    fs.writeFileSync(path.join(serverDir, "db", indexFile), content, "utf-8");
+  }
+
+  // Dynamic Wiring for Drizzle
+  if (orm === "drizzle") {
+    const indexFile = config.language === "typescript" ? "index.ts" : "index.js";
+    const indexPath = path.join(serverDir, "db", indexFile);
+    if (fs.existsSync(indexPath)) {
+      let content = fs.readFileSync(indexPath, "utf-8");
+      
+      const provider = database.provider || "local";
+      let importStr = "";
+      let wrapStr = "";
+
+      if (config.language === "typescript") {
+        if (database.type === "postgres") {
+          if (provider === "neon") {
+            importStr = `import { drizzle } from "drizzle-orm/neon-http";\nimport * as schema from "./schema";\n`;
+            wrapStr = `\nexport const db = drizzle(sql, { schema });\n`;
+          } else {
+            importStr = `import { drizzle } from "drizzle-orm/node-postgres";\nimport * as schema from "./schema";\n`;
+            wrapStr = `\nexport const db = drizzle(pool, { schema });\n`;
+          }
+        } else if (database.type === "mysql") {
+          importStr = `import { drizzle } from "drizzle-orm/mysql2";\nimport * as schema from "./schema";\n`;
+          wrapStr = `\nexport const db = drizzle(pool, { schema, mode: "default" });\n`;
+        } else if (database.type === "sqlite") {
+          if (provider === "turso") {
+            importStr = `import { drizzle } from "drizzle-orm/libsql";\nimport * as schema from "./schema";\n`;
+            wrapStr = `\nexport const dbInstance = drizzle(db, { schema });\n`;
+          } else {
+            importStr = `import { drizzle } from "drizzle-orm/better-sqlite3";\nimport * as schema from "./schema";\n`;
+            wrapStr = `\nexport const dbInstance = drizzle(db, { schema });\n`;
+          }
+        }
+      } else { // javascript
+        if (database.type === "postgres") {
+          if (provider === "neon") {
+            importStr = `const { drizzle } = require("drizzle-orm/neon-http");\nconst schema = require("./schema");\n`;
+            wrapStr = `\nconst dbInstance = drizzle(sql, { schema });\nmodule.exports.db = dbInstance;\n`;
+          } else {
+            importStr = `const { drizzle } = require("drizzle-orm/node-postgres");\nconst schema = require("./schema");\n`;
+            wrapStr = `\nconst dbInstance = drizzle(pool, { schema });\nmodule.exports.db = dbInstance;\n`;
+          }
+        } else if (database.type === "mysql") {
+          importStr = `const { drizzle } = require("drizzle-orm/mysql2");\nconst schema = require("./schema");\n`;
+          wrapStr = `\nconst dbInstance = drizzle(pool, { schema, mode: "default" });\nmodule.exports.db = dbInstance;\n`;
+        } else if (database.type === "sqlite") {
+          if (provider === "turso") {
+            importStr = `const { drizzle } = require("drizzle-orm/libsql");\nconst schema = require("./schema");\n`;
+            wrapStr = `\nconst dbInstance = drizzle(db, { schema });\nmodule.exports.dbInstance = dbInstance;\n`;
+          } else {
+            importStr = `const { drizzle } = require("drizzle-orm/better-sqlite3");\nconst schema = require("./schema");\n`;
+            wrapStr = `\nconst dbInstance = drizzle(db, { schema });\nmodule.exports.dbInstance = dbInstance;\n`;
+          }
+        }
+      }
+
+      content = importStr + content + wrapStr;
+      fs.writeFileSync(indexPath, content, "utf-8");
+    }
+  }
 }
 
 // ─── Auth Layer ──────────────────────────────────────────────────────────────
@@ -438,15 +516,36 @@ function scaffoldDocker(projectPath, config) {
   const { backend, runtime } = config;
   const useBun = runtime === "bun";
 
-  // Copy docker-compose.yml
-  const composeSrc = path.join(dockerTemplate, "docker-compose.yml");
-  if (fs.existsSync(composeSrc)) {
-    let compose = fs.readFileSync(composeSrc, "utf-8");
-    // Runtime-aware base image substitution
-    compose = compose.replace(/\{\{BASE_IMAGE\}\}/g, useBun ? "oven/bun:alpine" : "node:20-alpine");
-    compose = compose.replace(/\{\{INSTALL_CMD\}\}/g, useBun ? "bun install" : "npm install");
-    fs.writeFileSync(path.join(projectPath, "docker-compose.yml"), compose, "utf-8");
+  // Generate docker-compose.yml
+  const composeLines = [
+    'version: "3.8"',
+    '',
+    'services:',
+    '  client:',
+    '    build:',
+    '      context: ./client',
+    '      dockerfile: Dockerfile',
+    '    ports:',
+    '      - "3000:80"',
+  ];
+
+  if (backend !== "none" && backend !== "convex") {
+    composeLines.push(
+      '    depends_on:',
+      '      - server',
+      '',
+      '  server:',
+      '    build:',
+      '      context: ./server',
+      '      dockerfile: Dockerfile',
+      '    ports:',
+      '      - "5000:5000"',
+      '    env_file:',
+      '      - ./server/.env'
+    );
   }
+
+  fs.writeFileSync(path.join(projectPath, "docker-compose.yml"), composeLines.join("\n") + "\n", "utf-8");
 
   // Server Dockerfile (runtime-aware)
   if (backend !== "none" && backend !== "convex") {
