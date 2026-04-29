@@ -235,8 +235,15 @@ function scaffoldBackend(projectPath, config, spinner) {
     execSync("npm init -y", { cwd: serverDest, stdio: "ignore", shell: true });
   }
 
-  // Runtime-aware: patch server package.json scripts for bun vs node
+  // Merge deps.json into server/package.json
   const serverPkg = path.join(serverDest, "package.json");
+  mergeDeps(backendTemplate, serverPkg);
+
+  // Merge .env.fragment into server/.env.example
+  const envPath = path.join(serverDest, ".env.example");
+  mergeEnv(backendTemplate, envPath);
+
+  // Runtime-aware: patch server package.json scripts for bun vs node
   if (runtime === "bun" && fs.existsSync(serverPkg)) {
     const pkg = fs.readJsonSync(serverPkg);
     const entry = language === "typescript" ? "server.ts" : "server.js";
