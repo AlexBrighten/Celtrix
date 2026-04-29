@@ -6,6 +6,7 @@ import ora from "ora";
 import boxen from "boxen";
 import fs from "fs";
 import path from "path";
+import { detectPackageManager } from "../stable/detectPackageManager.js";
 
 export async function askPackageManager() {
   return await inquirer.prompt([

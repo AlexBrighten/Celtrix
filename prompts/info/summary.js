@@ -6,6 +6,8 @@ import ora from "ora";
 import boxen from "boxen";
 import fs from "fs";
 import path from "path";
+import { formatElapsed } from "./formatElapsed.js";
+import { getStackMeta } from "../stable/getStackMeta.js";
 
 export function showSummaryBox({ projectName, config, installedDeps, createdRepo, elapsed }) {
   const isCustom = config.stack === "custom";

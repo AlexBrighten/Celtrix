@@ -6,6 +6,7 @@ import ora from "ora";
 import boxen from "boxen";
 import fs from "fs";
 import path from "path";
+import { getVersion } from "./getVersion.js";
 
 export function showVersion() {
   const version = getVersion();
