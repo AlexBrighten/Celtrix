@@ -162,7 +162,6 @@ function scaffoldFrontend(projectPath, config) {
   const { frontend, language, packageManager } = config;
 
   if (frontend === "nextjs") {
-    logger.info("⚡ Creating Next.js frontend...");
     const nextCmd = (() => {
       switch (packageManager) {
         case "pnpm":  return "pnpm dlx create-next-app@latest";
@@ -174,24 +173,22 @@ function scaffoldFrontend(projectPath, config) {
     const tsFlag = language === "typescript" ? "--typescript" : "--js";
     execSync(
       `${nextCmd} client ${tsFlag} --eslint --tailwind --src-dir --app --no-turbo --import-alias="@/*" --yes`,
-      { cwd: projectPath, stdio: "inherit", shell: true }
+      { cwd: projectPath, stdio: "ignore", shell: true }
     );
     return;
   }
 
   if (frontend === "nuxt") {
-    logger.info("⚡ Creating Nuxt frontend...");
     execSync(`npx -y nuxi@latest init client --no-install --no-git`, {
-      cwd: projectPath, stdio: "inherit", shell: true,
+      cwd: projectPath, stdio: "ignore", shell: true,
     });
     return;
   }
 
   if (frontend === "astro") {
-    logger.info("⚡ Creating Astro frontend...");
     const tsFlag = language === "typescript" ? "--typescript strict" : "--typescript relaxed";
     execSync(`npm create astro@latest client -- --template basics ${tsFlag} --no-install --no-git --yes`, {
-      cwd: projectPath, stdio: "inherit", shell: true,
+      cwd: projectPath, stdio: "ignore", shell: true,
     });
     return;
   }
@@ -200,17 +197,16 @@ function scaffoldFrontend(projectPath, config) {
   const baseTemplate = VITE_TEMPLATE_MAP[frontend] || "react";
   const template = language === "typescript" ? `${baseTemplate}-ts` : baseTemplate;
   const cmd = buildViteCommand(config, template, "client");
-  logger.info(`⚡ Creating ${frontend} frontend via Vite...`);
-  execSync(cmd, { cwd: projectPath, stdio: "inherit", shell: true });
+  execSync(cmd, { cwd: projectPath, stdio: "ignore", shell: true });
 }
 
 // ─── Backend Scaffolding ─────────────────────────────────────────────────────
 
-function scaffoldBackend(projectPath, config) {
+function scaffoldBackend(projectPath, config, spinner) {
   const { backend, language, runtime } = config;
 
   if (backend === "none") {
-    logger.info("ℹ️  No backend selected — skipping server setup.");
+    if (spinner) spinner.text = "ℹ️  No backend selected — skipping server setup.";
     return;
   }
 
@@ -218,7 +214,7 @@ function scaffoldBackend(projectPath, config) {
     const convexTemplate = path.join(CUSTOM_TEMPLATES, "server", "convex", language);
     const convexDest = path.join(projectPath, "convex");
     if (fs.existsSync(convexTemplate)) {
-      logger.info("📂 Copying Convex function templates...");
+      if (spinner) spinner.text = "📂 Copying Convex function templates...";
       fs.copySync(convexTemplate, convexDest);
     } else {
       logger.warn(`⚠️  No Convex template found for ${language}. Creating empty convex/ directory.`);
@@ -231,8 +227,8 @@ function scaffoldBackend(projectPath, config) {
   const serverDest = path.join(projectPath, "server");
 
   if (fs.existsSync(backendTemplate)) {
-    logger.info(`📂 Copying ${backend} server template (${language})...`);
-    fs.copySync(backendTemplate, serverDest);
+      if (spinner) spinner.text = `📂 Copying ${backend} server template (${language})...`;
+      fs.copySync(backendTemplate, serverDest);
   } else {
     logger.warn(`⚠️  No template found for ${backend}/${language}. Creating empty server/ directory.`);
     fs.mkdirSync(serverDest, { recursive: true });
@@ -255,7 +251,7 @@ function scaffoldBackend(projectPath, config) {
 
 // ─── Database Layer ──────────────────────────────────────────────────────────
 
-function scaffoldDatabase(projectPath, config) {
+function scaffoldDatabase(projectPath, config, spinner) {
   const { database, backend } = config;
 
   if (!database || database.type === "none" || backend === "none") return;
@@ -283,7 +279,7 @@ function scaffoldDatabase(projectPath, config) {
   const serverPkg = path.join(serverDir, "package.json");
   const envPath = path.join(serverDir, ".env.example");
 
-  logger.info(`🗄️  Adding ${database.type} (${provider}) database connection...`);
+  if (spinner) spinner.text = `🗄️  Adding ${database.type} (${provider}) database connection...`;
 
   // Copy DB files (excluding deps.json and .env.fragment)
   const destDir = path.join(serverDir, "db");
@@ -300,7 +296,7 @@ function scaffoldDatabase(projectPath, config) {
 
 // ─── ORM Layer ───────────────────────────────────────────────────────────────
 
-function scaffoldORM(projectPath, config) {
+function scaffoldORM(projectPath, config, spinner) {
   const { orm, database, backend } = config;
 
   if (!orm || orm === "none" || !database || database.type === "none" || backend === "none") return;
@@ -324,7 +320,7 @@ function scaffoldORM(projectPath, config) {
     return;
   }
 
-  logger.info(`🔗 Adding ${orm} ORM configuration for ${database.type}...`);
+  if (spinner) spinner.text = `🔗 Adding ${orm} ORM configuration for ${database.type}...`;
 
   // Copy ORM files (excluding deps.json and .env.fragment)
   const files = fs.readdirSync(ormTemplate);
@@ -409,7 +405,7 @@ function scaffoldORM(projectPath, config) {
 
 // ─── Auth Layer ──────────────────────────────────────────────────────────────
 
-function scaffoldAuth(projectPath, config) {
+function scaffoldAuth(projectPath, config, spinner) {
   const { auth, language, backend } = config;
 
   if (!auth || auth === "none") return;
@@ -426,7 +422,7 @@ function scaffoldAuth(projectPath, config) {
     return;
   }
 
-  logger.info(`🔐 Adding ${auth} auth configuration...`);
+  if (spinner) spinner.text = `🔐 Adding ${auth} auth configuration...`;
 
   const files = fs.readdirSync(authTemplate);
   for (const file of files) {
@@ -440,7 +436,7 @@ function scaffoldAuth(projectPath, config) {
 
 // ─── API Layer ───────────────────────────────────────────────────────────────
 
-function scaffoldAPI(projectPath, config) {
+function scaffoldAPI(projectPath, config, spinner) {
   const { api, language, backend } = config;
 
   if (!api || api === "none" || backend === "none") return;
@@ -454,7 +450,7 @@ function scaffoldAPI(projectPath, config) {
     return;
   }
 
-  logger.info(`🔌 Adding ${api} API layer...`);
+  if (spinner) spinner.text = `🔌 Adding ${api} API layer...`;
 
   const files = fs.readdirSync(apiTemplate);
   for (const file of files) {
@@ -467,7 +463,7 @@ function scaffoldAPI(projectPath, config) {
 
 // ─── Addons ──────────────────────────────────────────────────────────────────
 
-function scaffoldAddons(projectPath, config) {
+function scaffoldAddons(projectPath, config, spinner) {
   const { addons } = config;
 
   if (!addons || addons.length === 0) return;
@@ -475,10 +471,10 @@ function scaffoldAddons(projectPath, config) {
   for (const addon of addons) {
     // Nx requires special handling — not a simple file copy
     if (addon === "nx") {
-      logger.info("🧩 Initializing Nx monorepo...");
+      if (spinner) spinner.text = "🧩 Initializing Nx monorepo...";
       try {
         execSync("npx -y nx@latest init --no-interactive", {
-          cwd: projectPath, stdio: "inherit", shell: true,
+          cwd: projectPath, stdio: "ignore", shell: true,
         });
       } catch {
         logger.warn("⚠️  Nx initialization failed. You can run 'npx nx init' manually.");
@@ -493,7 +489,7 @@ function scaffoldAddons(projectPath, config) {
       continue;
     }
 
-    logger.info(`🧩 Adding ${addon} addon...`);
+    if (spinner) spinner.text = `🧩 Adding ${addon} addon...`;
     // Copy non-manifest files
     const files = fs.readdirSync(addonTemplate);
     for (const file of files) {
@@ -509,7 +505,7 @@ function scaffoldAddons(projectPath, config) {
 
 // ─── Docker ──────────────────────────────────────────────────────────────────
 
-function scaffoldDocker(projectPath, config) {
+function scaffoldDocker(projectPath, config, spinner) {
   const dockerTemplate = path.join(CUSTOM_TEMPLATES, "docker");
   if (!fs.existsSync(dockerTemplate)) return;
 
@@ -583,59 +579,49 @@ function scaffoldDocker(projectPath, config) {
 /**
  * Orchestrates the full custom stack scaffolding process.
  */
-export async function scaffoldCustomStack(projectPath, projectName, config, installDeps) {
+export async function scaffoldCustomStack(projectPath, projectName, config, installDeps, spinner) {
   // 0. Root project files (package.json workspaces, .gitignore, README)
   scaffoldRoot(projectPath, projectName, config);
 
   // 1. Frontend
+  if (spinner) spinner.text = `⚡ Creating ${config.frontend} frontend...`;
   scaffoldFrontend(projectPath, config);
 
   // 2. Backend
-  scaffoldBackend(projectPath, config);
+  if (spinner) spinner.text = `⚙️  Setting up ${config.backend} backend...`;
+  scaffoldBackend(projectPath, config, spinner);
 
   // 3. Database (with provider dimension)
-  scaffoldDatabase(projectPath, config);
+  scaffoldDatabase(projectPath, config, spinner);
 
   // 4. ORM
-  scaffoldORM(projectPath, config);
+  scaffoldORM(projectPath, config, spinner);
 
   // 5. Auth
-  scaffoldAuth(projectPath, config);
+  scaffoldAuth(projectPath, config, spinner);
 
   // 6. API
-  scaffoldAPI(projectPath, config);
+  scaffoldAPI(projectPath, config, spinner);
 
   // 7. Addons
-  scaffoldAddons(projectPath, config);
+  scaffoldAddons(projectPath, config, spinner);
 
   // 8. Docker (runtime-aware)
-  scaffoldDocker(projectPath, config);
+  if (spinner) spinner.text = "🐳 Adding Docker configuration...";
+  scaffoldDocker(projectPath, config, spinner);
 
-  // 9. Install dependencies
+  // 9. Install dependencies (from root for workspaces)
   if (installDeps) {
-    const installCmd = getInstallCommand(config.packageManager);
-
-    // Server deps
-    const serverDir = path.join(projectPath, "server");
-    if (config.backend !== "none" && config.backend !== "convex" && fs.existsSync(serverDir)) {
-      logger.info("📦 Installing server dependencies...");
+    if (spinner) spinner.text = `📦 Installing dependencies with ${config.packageManager}...`;
+    try {
       execSync(`${config.packageManager} install`, {
-        cwd: serverDir, stdio: "inherit", shell: true,
+        cwd: projectPath, stdio: "ignore", shell: true,
       });
-    }
-
-    // Client deps
-    const clientDir = path.join(projectPath, "client");
-    if (fs.existsSync(clientDir)) {
-      logger.info("📦 Installing client dependencies...");
-      execSync(`${config.packageManager} install`, {
-        cwd: clientDir, stdio: "inherit", shell: true,
-      });
+    } catch (err) {
+      logger.warn(`⚠️  Failed to install dependencies. You can run '${config.packageManager} install' manually.`);
     }
   }
 
   // 10. Save config
   fs.writeJsonSync(path.join(projectPath, "celtrix.config.json"), config, { spaces: 2 });
-
-  logger.success("✅ Custom stack scaffolded successfully!");
 }

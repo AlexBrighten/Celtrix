@@ -148,7 +148,22 @@ async function main() {
 
       if (stackAnswers.stack === "custom") {
         // ── Custom Stack Flow ──
-        console.log(chalk.gray("\n── Customise your tech stack ──\n"));
+        console.log("");
+        console.log(
+          chalk.gray("  ") +
+          gradient(["#667EEA", "#764BA2"])("┌─────────────────────────────────────────┐")
+        );
+        console.log(
+          chalk.gray("  ") +
+          gradient(["#667EEA", "#764BA2"])("│") +
+          chalk.white.bold("   🛠  Customise your tech stack          ") +
+          gradient(["#667EEA", "#764BA2"])("│")
+        );
+        console.log(
+          chalk.gray("  ") +
+          gradient(["#667EEA", "#764BA2"])("└─────────────────────────────────────────┘")
+        );
+        console.log("");
         const customConfig = await gatherCustomConfig();
         packageManager = (await askPackageManager()).packageManager;
         config = { stack: "custom", ...customConfig, projectName, packageManager };
@@ -188,34 +203,41 @@ async function main() {
     ]);
 
     // --- Scaffold with spinner + timing ---
+    console.log("");
     const startTime = Date.now();
     const scaffoldSpinner = ora({
-      text: chalk.yellow("Scaffolding your project…"),
-      spinner: "dots12",
+      text: gradient(["#00F2FE", "#4FACFE"])("Setting up your project..."),
+      spinner: "arc",
+      color: "cyan",
     }).start();
 
     try {
-      await createProject(projectName, config, installDeps);
+      await createProject(projectName, config, installDeps, scaffoldSpinner);
       const elapsed = Date.now() - startTime;
       scaffoldSpinner.succeed(
-        chalk.green(`Project scaffolded in ${formatElapsed(elapsed)}`)
+        gradient(["#00b09b", "#96c93d"])(`Project scaffolded in ${formatElapsed(elapsed)}`)
       );
     } catch (err) {
-      scaffoldSpinner.fail(chalk.red("Scaffolding failed"));
+      scaffoldSpinner.fail(chalk.red.bold("Scaffolding failed"));
       throw err;
     }
 
     // --- Git init ---
     if (initGit) {
+      const gitSpinner = ora({
+        text: chalk.gray("Initializing git repository..."),
+        spinner: "arc",
+        color: "gray",
+      }).start();
       const projectPath = path.join(process.cwd(), projectName);
       try {
         const { execSync } = await import("child_process");
         execSync("git init", { cwd: projectPath, stdio: "ignore" });
         execSync("git add .", { cwd: projectPath, stdio: "ignore" });
         execSync('git commit -m "Initial commit"', { cwd: projectPath, stdio: "ignore" });
-        console.log(chalk.green("\n🎉 Git repository initialized with initial commit."));
+        gitSpinner.succeed(chalk.green("Git initialized with initial commit"));
       } catch {
-        console.log(chalk.yellow("\n⚠️  Could not initialize git — you can run 'git init' manually."));
+        gitSpinner.warn(chalk.yellow("Could not initialize git — run 'git init' manually"));
       }
     }
 

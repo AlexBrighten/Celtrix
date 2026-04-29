@@ -1,13 +1,14 @@
 import chalk from "chalk";
+import logSymbols from "log-symbols";
 
 const isVerbose =
   process.argv.includes("--verbose") || process.env.DEBUG === "celtrix";
 
 export const logger = {
-  info: (msg) => console.log(chalk.blue(msg)),
-  success: (msg) => console.log(chalk.green(msg)),
-  warn: (msg) => console.log(chalk.yellow(msg)),
-  error: (msg) => console.log(chalk.red(msg)),
+  info: (msg) => console.log(`${logSymbols.info} ${chalk.blueBright(msg)}`),
+  success: (msg) => console.log(`${logSymbols.success} ${chalk.green(msg)}`),
+  warn: (msg) => console.log(`${logSymbols.warning} ${chalk.yellow(msg)}`),
+  error: (msg) => console.log(`${logSymbols.error} ${chalk.red(msg)}`),
 
   /**
    * Prints a debug message — only visible with --verbose flag or DEBUG=celtrix.

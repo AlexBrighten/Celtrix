@@ -1,0 +1,17 @@
+{
+  "stack": "custom",
+  "language": "typescript",
+  "frontend": "nextjs",
+  "backend": "express",
+  "runtime": "node",
+  "database": {
+    "type": "postgres",
+    "provider": "neon"
+  },
+  "orm": "drizzle",
+  "api": "trpc",
+  "auth": "clerk",
+  "addons": [],
+  "projectName": "hi",
+  "packageManager": "npm"
+}

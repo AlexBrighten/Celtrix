@@ -1,6 +1,7 @@
 import inquirer from "inquirer";
 import chalk from "chalk";
 import boxen from "boxen";
+import gradient from "gradient-string";
 import { askLanguage } from "./web-parts/language.js";
 import { askFrontend } from "./web-parts/frontend.js";
 import { askBackend } from "./web-parts/backend.js";
@@ -29,43 +30,44 @@ function step(n) {
  * @param {object} config - Gathered config object.
  */
 function showConfirmationSummary(config) {
-  const line = (icon, label, value, color = chalk.white) =>
+  const pad = 12;
+  const row = (label, value, color) =>
     value && value !== "none"
-      ? `${icon} ${chalk.bold(label + ":")}  ${color(value)}`
+      ? `  ${color("●")}  ${chalk.bold(label.padEnd(pad))} ${chalk.gray('│')} ${color(value)}`
       : null;
 
   const lines = [
-    line("📖", "Language", config.language, chalk.yellowBright),
-    line("🎨", "Frontend", config.frontend, chalk.cyanBright),
-    line("⚙️ ", "Backend", config.backend, chalk.magentaBright),
-    line("⚡", "Runtime", config.runtime === "bun" ? "Bun" : "Node.js", chalk.greenBright),
+    row("Language", config.language, chalk.yellowBright),
+    row("Frontend", config.frontend, chalk.cyanBright),
+    row("Backend", config.backend, chalk.magentaBright),
+    row("Runtime", config.runtime === "bun" ? "Bun" : "Node.js", chalk.greenBright),
   ];
 
   if (config.database.type !== "none") {
     const dbVal = config.database.provider
       ? `${config.database.type} ${chalk.gray("via")} ${config.database.provider}`
       : config.database.type;
-    lines.push(`🗄️  ${chalk.bold("Database:")}  ${chalk.cyanBright(dbVal)}`);
+    lines.push(`  ${chalk.hex("#00F2FE")("●")}  ${chalk.bold("Database".padEnd(pad))} ${chalk.gray('│')} ${chalk.hex("#00F2FE")(dbVal)}`);
   }
 
   lines.push(
-    line("🔗", "ORM", config.orm, chalk.greenBright),
-    line("🔌", "API", config.api, chalk.blueBright),
-    line("🔐", "Auth", config.auth, chalk.magentaBright),
+    row("ORM", config.orm, chalk.greenBright),
+    row("API", config.api, chalk.blueBright),
+    row("Auth", config.auth, chalk.hex("#E040FB")),
   );
 
   if (config.addons.length > 0) {
-    lines.push(`🧩 ${chalk.bold("Add-ons:")}  ${chalk.yellow(config.addons.join(", "))}`);
+    lines.push(`  ${chalk.yellow("●")}  ${chalk.bold("Add-ons".padEnd(pad))} ${chalk.gray('│')} ${chalk.yellow(config.addons.join(", "))}`);
   }
 
+  console.log("");
   console.log(
     boxen(lines.filter(Boolean).join("\n"), {
-      padding: 1,
-      margin: { top: 1, bottom: 0, left: 0, right: 0 },
-      borderColor: "cyan",
+      padding: { top: 1, bottom: 1, left: 2, right: 4 },
+      margin: { left: 1, bottom: 1 },
+      borderColor: "blueBright",
       borderStyle: "round",
-      title: chalk.cyanBright.bold("📋 Your Custom Stack"),
-      titleAlignment: "center",
+      title: gradient(["#667EEA", "#764BA2"])(" ✦ Your Custom Stack ✦ "),
     })
   );
 }

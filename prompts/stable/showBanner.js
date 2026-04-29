@@ -1,21 +1,33 @@
-import inquirer from "inquirer";
 import chalk from "chalk";
 import gradient from "gradient-string";
 import figlet from "figlet";
-import ora from "ora";
-import boxen from "boxen";
-import fs from "fs";
-import path from "path";
+
+// Custom gradient theme
+const celtrixGradient = gradient(["#00F2FE", "#4FACFE", "#667EEA"]);
 
 export function showBanner() {
+  const banner = figlet.textSync("Celtrix", {
+    font: "ANSI Shadow",
+    horizontalLayout: "fitted",
+    verticalLayout: "default",
+  });
+
+  console.log("");
+  console.log(celtrixGradient(banner));
+  console.log("");
   console.log(
-    gradient.pastel(
-      figlet.textSync("Celtrix", {
-        font: "Big",
-        horizontalLayout: "default",
-        verticalLayout: "default",
-      })
-    )
+    chalk.gray("  ") +
+    celtrixGradient("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
   );
-  console.log(chalk.gray("⚡ Setup Web-apps in seconds, not hours ⚡\n"));
+  console.log(
+    chalk.gray("  ") +
+    chalk.white.bold("  ⚡ ") +
+    chalk.gray("Setup Web-apps in seconds, not hours") +
+    chalk.white.bold(" ⚡")
+  );
+  console.log(
+    chalk.gray("  ") +
+    celtrixGradient("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+  );
+  console.log("");
 }

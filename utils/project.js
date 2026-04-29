@@ -8,7 +8,7 @@ import { HonoReactSetup, mernTailwindSetup, installDependencies, mernSetup, serv
 import { angularSetup, angularTailwindSetup } from "./installer.js";
 import { scaffoldCustomStack } from "./customScaffolder.js";
 
-export async function setupProject(projectName, config, installDeps) {
+export async function setupProject(projectName, config, installDeps, spinner) {
   const projectPath = path.join(process.cwd(), projectName);
 
   if (fs.existsSync(projectPath)) {
@@ -20,40 +20,45 @@ export async function setupProject(projectName, config, installDeps) {
 
   // --- Pretty Project Config (Boxed) ---
   const isCustom = config.stack === "custom";
+  const pad = 14;
+  const row = (label, value) => `  ${chalk.bold(label.padEnd(pad))} ${chalk.gray('│')} ${value}`;
 
   const configLines = [
-    `${chalk.bold("🌐 Stack:")}  ${chalk.green(isCustom ? "Custom" : config.stack)}`,
-    `${chalk.bold("📦 Project Name:")}  ${chalk.blue(projectName)}`,
+    row("Stack", chalk.greenBright(isCustom ? "Custom" : config.stack)),
+    row("Project", chalk.blueBright(projectName)),
   ];
 
   if (isCustom) {
-    configLines.push(`${chalk.bold("📖 Language:")}  ${chalk.yellowBright(config.language)}`);
-    if (config.frontend)                            configLines.push(`${chalk.bold("🎨 Frontend:")}  ${chalk.cyanBright(config.frontend)}`);
-    if (config.backend && config.backend !== "none") configLines.push(`${chalk.bold("⚙️  Backend:")}  ${chalk.magentaBright(config.backend)}`);
+    configLines.push(row("Language", chalk.yellowBright(config.language)));
+    if (config.frontend)                            configLines.push(row("Frontend", chalk.cyanBright(config.frontend)));
+    if (config.backend && config.backend !== "none") configLines.push(row("Backend", chalk.magentaBright(config.backend)));
     if (config.database && config.database.type !== "none") {
-      configLines.push(`${chalk.bold("🗄️  Database:")}  ${chalk.cyanBright(config.database.type)}${config.database.provider ? chalk.gray(" via ") + chalk.white(config.database.provider) : ""}`);
+      const dbVal = config.database.provider
+        ? `${config.database.type} ${chalk.gray("via")} ${config.database.provider}`
+        : config.database.type;
+      configLines.push(row("Database", chalk.cyanBright(dbVal)));
     }
-    if (config.orm && config.orm !== "none")         configLines.push(`${chalk.bold("🔗 ORM:")}  ${chalk.greenBright(config.orm)}`);
-    if (config.api && config.api !== "none")         configLines.push(`${chalk.bold("🔌 API:")}  ${chalk.blueBright(config.api)}`);
-    if (config.auth && config.auth !== "none")       configLines.push(`${chalk.bold("🔐 Auth:")}  ${chalk.magentaBright(config.auth)}`);
-    if (config.addons && config.addons.length > 0)   configLines.push(`${chalk.bold("🧩 Add-ons:")}  ${chalk.yellow(config.addons.join(", "))}`);
+    if (config.orm && config.orm !== "none")         configLines.push(row("ORM", chalk.greenBright(config.orm)));
+    if (config.api && config.api !== "none")         configLines.push(row("API", chalk.blueBright(config.api)));
+    if (config.auth && config.auth !== "none")       configLines.push(row("Auth", chalk.magentaBright(config.auth)));
+    if (config.addons && config.addons.length > 0)   configLines.push(row("Add-ons", chalk.yellow(config.addons.join(", "))));
   } else {
-    configLines.push(`${chalk.bold("📖 Language:")}  ${chalk.red(config.language)}`);
+    configLines.push(row("Language", chalk.yellowBright(config.language)));
   }
 
   configLines.push(
-    `${chalk.bold("⚡ Runtime:")}  ${config.runtime === 'bun' ? chalk.white('Bun') : chalk.greenBright('Node.js')}`,
-    `${chalk.bold("📦 Package Manager:")}  ${chalk.magenta(config.packageManager)}`,
+    "",
+    row("Runtime", config.runtime === 'bun' ? chalk.white('Bun') : chalk.greenBright('Node.js')),
+    row("Pkg Manager", chalk.magenta(config.packageManager)),
   );
 
   console.log(
     boxen(configLines.join("\n"), {
-      padding: 1,
-      margin: 1,
-      borderColor: "cyan",
+      padding: { top: 1, bottom: 1, left: 3, right: 5 },
+      margin: { left: 1, top: 1, bottom: 0 },
+      borderColor: "cyanBright",
       borderStyle: "round",
-      title: chalk.cyanBright("📋 Project Configuration"),
-      titleAlignment: "center",
+      title: chalk.cyanBright.bold(" ⚙ Project Configuration "),
     })
   );
 
@@ -61,8 +66,8 @@ export async function setupProject(projectName, config, installDeps) {
 
   try {
     if (isCustom) {
-      logger.info("📋 Scaffolding custom stack project...");
-      await scaffoldCustomStack(projectPath, projectName, config, installDeps);
+      if (spinner) spinner.text = "📋 Scaffolding custom stack project...";
+      await scaffoldCustomStack(projectPath, projectName, config, installDeps, spinner);
     }
 
     else if (config.stack.startsWith("custom-template:")) {
