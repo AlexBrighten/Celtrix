@@ -3,9 +3,10 @@ import fs from "fs-extra";
 import chalk from "chalk";
 import boxen from "boxen";
 import { logger } from "./logger.js";
-import { copyTemplates } from "./templateManager.js";
+import { copyTemplates, scaffoldFromCustomTemplate } from "./templateManager.js";
 import { HonoReactSetup, mernTailwindSetup, installDependencies, mernSetup, serverAuthSetup, serverSetup, mevnSetup, mevnTailwindAuthSetup, nextSetup } from "./installer.js";
 import { angularSetup, angularTailwindSetup } from "./installer.js";
+import { scaffoldCustomStack } from "./customScaffolder.js";
 
 /**
  * Generates starter files for a custom-stack project so the user doesn't
@@ -173,9 +174,26 @@ export async function setupProject(projectName, config, installDeps) {
 
   try {
     if (isCustom) {
-      logger.info("📋 Bootstrapping custom stack project...");
-      bootstrapCustomProject(projectPath, projectName, config);
-      logger.success(`✅ Project scaffolded with README, .gitignore, package.json, and config`);
+      logger.info("📋 Scaffolding custom stack project...");
+      await scaffoldCustomStack(projectPath, projectName, config, installDeps);
+    }
+
+    else if (config.stack.startsWith("custom-template:")) {
+      const templateName = config.stack.split(":")[1];
+      scaffoldFromCustomTemplate(projectPath, templateName);
+      
+      // Update package.json name if it exists
+      const pkgPath = path.join(projectPath, "package.json");
+      if (fs.existsSync(pkgPath)) {
+        try {
+          const pkg = fs.readJsonSync(pkgPath);
+          pkg.name = projectName;
+          fs.writeJsonSync(pkgPath, pkg, { spaces: 2 });
+          logger.info(`📝 Updated package.json name to ${projectName}`);
+        } catch (err) {
+          logger.warn(`⚠️ Could not update package.json: ${err.message}`);
+        }
+      }
     }
 
     else if (config.stack === "mern") {

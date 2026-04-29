@@ -1,8 +1,83 @@
+import os from "os";
 import fs from "fs-extra";
 import path from "path";
+import { execSync } from "child_process";
 import { fileURLToPath } from "url";
 import { logger } from "./logger.js";
 import { angularSetup } from "./installer.js";
+
+const CELTRIX_DIR = path.join(os.homedir(), ".celtrix");
+const TEMPLATES_FILE = path.join(CELTRIX_DIR, "templates.json");
+
+function ensureStorage() {
+  if (!fs.existsSync(CELTRIX_DIR)) {
+    fs.mkdirSync(CELTRIX_DIR, { recursive: true });
+  }
+  if (!fs.existsSync(TEMPLATES_FILE)) {
+    fs.writeJsonSync(TEMPLATES_FILE, []);
+  }
+}
+
+export function getCustomTemplates() {
+  ensureStorage();
+  return fs.readJsonSync(TEMPLATES_FILE);
+}
+
+export function addCustomTemplate(name, source) {
+  ensureStorage();
+  const templates = getCustomTemplates();
+  if (templates.find(t => t.name === name)) {
+    throw new Error(`Template "${name}" already exists.`);
+  }
+  templates.push({ name, source });
+  fs.writeJsonSync(TEMPLATES_FILE, templates, { spaces: 2 });
+}
+
+export function removeCustomTemplate(name) {
+  ensureStorage();
+  let templates = getCustomTemplates();
+  const initialLength = templates.length;
+  templates = templates.filter(t => t.name !== name);
+  if (templates.length === initialLength) {
+    throw new Error(`Template "${name}" not found.`);
+  }
+  fs.writeJsonSync(TEMPLATES_FILE, templates, { spaces: 2 });
+}
+
+export function scaffoldFromCustomTemplate(projectPath, templateName) {
+  const templates = getCustomTemplates();
+  const template = templates.find(t => t.name === templateName);
+  if (!template) {
+    throw new Error(`Template "${templateName}" not found.`);
+  }
+
+  const source = template.source;
+  if (source.startsWith("http") || source.endsWith(".git")) {
+    logger.info(`🌐 Cloning template from ${source}...`);
+    try {
+      execSync(`git clone ${source} "${projectPath}"`, { stdio: "inherit" });
+      // Remove .git directory to make it a fresh project
+      const gitDir = path.join(projectPath, ".git");
+      if (fs.existsSync(gitDir)) {
+        fs.removeSync(gitDir);
+      }
+    } catch (err) {
+      throw new Error(`Failed to clone template: ${err.message}`);
+    }
+  } else {
+    logger.info(`📂 Copying template from ${source}...`);
+    const absoluteSource = path.resolve(source);
+    if (!fs.existsSync(absoluteSource)) {
+      throw new Error(`Source path "${source}" does not exist.`);
+    }
+    try {
+      fs.copySync(absoluteSource, projectPath);
+    } catch (err) {
+      throw new Error(`Failed to copy template: ${err.message}`);
+    }
+  }
+}
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

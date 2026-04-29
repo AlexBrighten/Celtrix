@@ -24,6 +24,7 @@ import { formatElapsed } from "./prompts/info/formatElapsed.js";
 import { showSummaryBox } from "./prompts/info/summary.js";
 import { parseArgs } from "./prompts/stable/parseArgs.js";
 import { detectPackageManager } from "./prompts/stable/detectPackageManager.js";
+import { getCustomTemplates, addCustomTemplate, removeCustomTemplate } from "./utils/templateManager.js";
 
 const orange = chalk.hex("#FF6200");
 
@@ -52,6 +53,55 @@ async function main() {
 
   if (args.includes('login')) {
     await loginCommand();
+    process.exit(0);
+  }
+
+  if (args.includes('template')) {
+    const action = args[args.indexOf('template') + 1];
+    if (action === 'add') {
+      const name = args[args.indexOf('add') + 1];
+      const source = args[args.indexOf('add') + 2];
+      if (!name || !source) {
+        console.log(chalk.red('❌ Please provide both name and source.'));
+        console.log(chalk.gray('Usage: celtrix template add <name> <source>'));
+        process.exit(1);
+      }
+      try {
+        addCustomTemplate(name, source);
+        console.log(chalk.green(`✅ Template "${name}" added successfully.`));
+      } catch (err) {
+        console.log(chalk.red(`❌ Error: ${err.message}`));
+      }
+    } else if (action === 'list') {
+      const templates = getCustomTemplates();
+      if (templates.length === 0) {
+        console.log(chalk.yellow('No custom templates found.'));
+      } else {
+        console.log(chalk.cyan('\n📋 Custom Templates:'));
+        templates.forEach(t => {
+          console.log(`${chalk.bold(t.name)}: ${chalk.gray(t.source)}`);
+        });
+        console.log('');
+      }
+    } else if (action === 'remove') {
+      const name = args[args.indexOf('remove') + 1];
+      if (!name) {
+        console.log(chalk.red('❌ Please provide the template name to remove.'));
+        process.exit(1);
+      }
+      try {
+        removeCustomTemplate(name);
+        console.log(chalk.green(`✅ Template "${name}" removed successfully.`));
+      } catch (err) {
+        console.log(chalk.red(`❌ Error: ${err.message}`));
+      }
+    } else {
+      console.log(chalk.cyan('\n📋 Template Commands:'));
+      console.log(`  add <name> <source>   ${chalk.gray('Add a new custom template')}`);
+      console.log(`  list                  ${chalk.gray('List all custom templates')}`);
+      console.log(`  remove <name>         ${chalk.gray('Remove a custom template')}`);
+      console.log('');
+    }
     process.exit(0);
   }
 

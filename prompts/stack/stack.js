@@ -6,6 +6,7 @@ import ora from "ora";
 import boxen from "boxen";
 import fs from "fs";
 import path from "path";
+import { getCustomTemplates } from "../../utils/templateManager.js";
 
 const orange = chalk.hex("#FF6200");
 
@@ -22,6 +23,11 @@ export async function askStackQuestions() {
             chalk.gray(" → Pick every piece of your stack"),
           value: "custom",
         },
+        new inquirer.Separator(chalk.gray("  ── Custom Templates ──")),
+        ...getCustomTemplates().map(t => ({
+          name: chalk.yellowBright.bold(`⚡ ${t.name}`) + chalk.gray(` → ${t.source}`),
+          value: `custom-template:${t.name}`
+        })),
         new inquirer.Separator(chalk.gray("  ── Preset Stacks ──")),
         {
           name:
@@ -83,8 +89,8 @@ export async function askStackQuestions() {
     },
   ]);
 
-  // Skip language prompt for custom stack — it has its own language step.
-  if (stackAnswer.stack === "custom") {
+  // Skip language prompt for custom stack or custom templates
+  if (stackAnswer.stack === "custom" || stackAnswer.stack.startsWith("custom-template:")) {
     return stackAnswer;
   }
 
